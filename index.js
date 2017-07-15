@@ -117,7 +117,7 @@ exports.twitterFavGyazo = function twitterFavGyazo(req, res) {
   // const { statusId } = req.query;
 
   const linkToTweet = req.body;
-  console.log(`firstLinkUrl: ${linkToTweet}`);
+  console.log(`linkToTweet: ${linkToTweet}`);
   const statusId = linkToTweet.split('/').pop(); // get last element
   console.log(`status_id: ${statusId}`);
 
