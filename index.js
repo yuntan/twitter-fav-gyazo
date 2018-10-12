@@ -57,14 +57,16 @@ function getStatus(statusId, cb) {
         return;
       }
 
-      if (data.entities === undefined
-          || data.entities.media === undefined) {
+      if (data.extended_entities === undefined
+          || data.extended_entities.media === undefined) {
         return;
       }
 
       const text = data.text;
       // make sure to use https urls
-      const medias = data.entities.media.map(obj => [obj.expanded_url, obj.media_url_https]);
+      const medias = data.extended_entities.media
+        .filter(obj => obj.type === 'photo')
+        .map(obj => [obj.expanded_url, obj.media_url_https]);
 
       console.log(`text: ${text}`);
       console.log(`found ${medias.length} medias`);
