@@ -4,6 +4,7 @@
     "target": "es2017",
     "noImplicitAny": true,
     "removeComments": true,
-    "preserveConstEnums": true
+    "preserveConstEnums": true,
+    "skipLibCheck": true
   }
 }

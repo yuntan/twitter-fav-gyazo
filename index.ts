@@ -1,7 +1,9 @@
 // node standard library
 import https = require('https');
+import { IncomingMessage } from 'http';
 import { URL } from 'url';
 import { createHmac } from 'crypto';
+import { Readable } from 'stream';
 
 // thirdparty packages
 import fetch from 'node-fetch';
@@ -56,7 +58,7 @@ async function getStatus(statusId: string): Promise<[string, [string, string][]]
 }
 
 async function uploadToGyazo(
-  img: any, refererUrl: string, title: string, desc: string
+  img: Readable, refererUrl: string, title: string, desc: string,
 ) {
   const form = new FormData();
   form.append('access_token', config.GYAZO_TOKEN);
@@ -68,6 +70,7 @@ async function uploadToGyazo(
   const res = await fetch(GYAZO_UPLOAD_URL, {
     method: 'POST',
     body: form,
+    // headers: form.getHeaders(),
   });
   if (!res.ok) throw new Error(`status ${res.status} from gyazo`);
   const data = await res.json();
@@ -103,12 +106,13 @@ exports.twitterFavGyazo = async (req: any, res: any) => {
       const [expandedUrl, mediaUrlHttps] = tup;
 
       // WHY: cannot append response body to form-data
+      // related? https://github.com/form-data/form-data/issues/399
       // const imgRes = await fetch(mediaUrlHttps);
       // if (!imgRes.ok) {
       //   throw new Error(`failed to download image status: ${imgRes.status}`);
       // }
 
-      const imgRes = await new Promise((resolve) => {
+      const imgRes = await new Promise<IncomingMessage>((resolve) => {
         https.get(mediaUrlHttps, resolve);
       });
       if (imgRes.statusCode !== 200) {
