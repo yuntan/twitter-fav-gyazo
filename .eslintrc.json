@@ -1,5 +1,6 @@
 {
   "extends": "airbnb-base",
+  "parser": "typescript-eslint-parser",
   "rules": {
     "no-console": "off",
     "no-restricted-syntax": "off"
