@@ -15,7 +15,7 @@ const config = require('./config.json');
 const TWITTER_STATUS_SHOW_URL = 'https://api.twitter.com/1.1/statuses/show.json';
 const GYAZO_UPLOAD_URL = 'https://upload.gyazo.com/api/upload';
 
-const oauth = OAuth({
+const oauth = new OAuth({
   consumer: {
     key: config.TWITTER_KEY,
     secret: config.TWITTER_SECRET,
@@ -23,6 +23,7 @@ const oauth = OAuth({
   signature_method: 'HMAC-SHA1',
   hash_function: (baseStr: string, key: string) =>
     createHmac('sha1', key).update(baseStr).digest('base64'),
+  realm: '',
 });
 
 const token = {
@@ -33,8 +34,12 @@ const token = {
 async function getStatus(statusId: string): Promise<[string, [string, string][]]> {
   const reqURL = new URL(`${TWITTER_STATUS_SHOW_URL}?id=${statusId}`);
   const requestData = { url: reqURL.href, method: 'GET' };
+  const auth_data = oauth.authorize(requestData, token);
+  const header = {
+    Authorization: oauth.toHeader(auth_data).Authorization,
+  };
   const res = await fetch(`${TWITTER_STATUS_SHOW_URL}?id=${statusId}`, {
-    headers: oauth.toHeader(oauth.authorize(requestData, token)),
+    headers: header,
   });
   if (!res.ok) throw new Error(`status ${res.status} from twittter`);
   const data = await res.json();
