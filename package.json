@@ -2,6 +2,7 @@
   "name": "twitter-fav-gyazo",
   "version": "0.0.1",
   "devDependencies": {
+    "@google-cloud/functions-framework": "^1.5.1",
     "@types/form-data": "^2.2.1",
     "@types/node": "^10.11.7",
     "@types/node-fetch": "^2.1.2",
@@ -21,6 +22,7 @@
     "oauth-1.0a": "^2.2.4"
   },
   "scripts": {
+    "start": "functions-framework --target=twitterFavGyazo",
     "build": "tsc",
     "deploy": "gcloud beta functions deploy twitterFavGyazo --stage-bucket twitter-fav-gyazo-bucket --trigger-http"
   }

@@ -44,22 +44,24 @@ async function getStatus(statusId: string): Promise<[string, [string, string][]]
   if (!res.ok) throw new Error(`status ${res.status} from twittter`);
   const data = await res.json();
 
+  const text = data.text as string;
+  console.log(`text: ${text}`);
+
   if (data.extended_entities === undefined
       || data.extended_entities.media === undefined) {
-    return;
+    console.log('no media found');
+    return [text, []];
   }
 
-  const text = data.text as string;
   // make sure to use https urls
   const medias = data.extended_entities.media
     .filter((obj: any) => obj.type === 'photo')
     .map((obj: any) => [obj.expanded_url, obj.media_url_https]) as [string, string][];
 
-  console.log(`text: ${text}`);
   console.log(`found ${medias.length} medias`);
 
   const ret = [text, medias] as [string, [string, string][]];
-  return Promise.resolve(ret);
+  return ret;
 }
 
 async function uploadToGyazo(
@@ -129,12 +131,12 @@ exports.twitterFavGyazo = async (req: any, res: any) => {
       const desc = text.replace(/#/g, '');
 
       // return uploadToGyazo(await imgRes.buffer(), expandedUrl, title, desc);
-      return uploadToGyazo(imgRes, expandedUrl, title, desc);
+      await uploadToGyazo(imgRes, expandedUrl, title, desc);
       // return uploadToGyazo(imgRes.body, expandedUrl, title, desc);
     }));
     res.status(200).end();
   } catch (err) {
-    console.error(err.message);
+    console.error(err);
     res.status(500).end();
   }
 };
