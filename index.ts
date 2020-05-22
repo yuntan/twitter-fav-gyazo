@@ -15,6 +15,11 @@ const config = require('./config.json');
 const TWITTER_STATUS_SHOW_URL = 'https://api.twitter.com/1.1/statuses/show.json';
 const GYAZO_UPLOAD_URL = 'https://upload.gyazo.com/api/upload';
 
+interface Status {
+  text: string
+  media: { expandedUrl: string; mediaUrl: string }[]
+}
+
 const oauth = new OAuth({
   consumer: {
     key: config.TWITTER_KEY,
@@ -31,7 +36,7 @@ const token = {
   secret: config.TWITTER_TOKEN_SECRET,
 };
 
-async function getStatus(statusId: string): Promise<[string, [string, string][]]> {
+async function getStatus(statusId: string): Promise<Status> {
   const reqURL = new URL(`${TWITTER_STATUS_SHOW_URL}?id=${statusId}`);
   const requestData = { url: reqURL.href, method: 'GET' };
   const auth_data = oauth.authorize(requestData, token);
@@ -44,24 +49,26 @@ async function getStatus(statusId: string): Promise<[string, [string, string][]]
   if (!res.ok) throw new Error(`status ${res.status} from twittter`);
   const data = await res.json();
 
-  const text = data.text as string;
+  const text = data['text'] as string;
   console.log(`text: ${text}`);
 
   if (data.extended_entities === undefined
       || data.extended_entities.media === undefined) {
     console.log('no media found');
-    return [text, []];
+    return { text, media: [] };
   }
 
   // make sure to use https urls
-  const medias = data.extended_entities.media
-    .filter((obj: any) => obj.type === 'photo')
-    .map((obj: any) => [obj.expanded_url, obj.media_url_https]) as [string, string][];
+  const media = (data.extended_entities.media as any[])
+    .filter(obj => obj['type'] === 'photo')
+    .map(obj => ({
+      expandedUrl: obj['expanded_url'],
+      mediaUrl: obj['media_url_https'],
+    }));
 
-  console.log(`found ${medias.length} medias`);
+  console.log(`found ${media.length} medias`);
 
-  const ret = [text, medias] as [string, [string, string][]];
-  return ret;
+  return { text, media };
 }
 
 async function uploadToGyazo(
@@ -77,7 +84,6 @@ async function uploadToGyazo(
   const res = await fetch(GYAZO_UPLOAD_URL, {
     method: 'POST',
     body: form,
-    // headers: form.getHeaders(),
   });
   if (!res.ok) throw new Error(`status ${res.status} from gyazo`);
   const data = await res.json();
@@ -100,43 +106,37 @@ exports.twitterFavGyazo = async (req: any, res: any) => {
     return;
   }
 
-  // const { statusId } = req.query;
+  const linkToTweet = req.body as string;
+  const statusId = linkToTweet.split('/').pop()!!; // get last element
 
-  const linkToTweet = req.body;
   console.log(`linkToTweet: ${linkToTweet}`);
-  const statusId = linkToTweet.split('/').pop(); // get last element
   console.log(`status_id: ${statusId}`);
 
-  try {
-    const [text, medias] = await getStatus(statusId);
-    await Promise.all(medias.map(async (tup) => {
-      const [expandedUrl, mediaUrlHttps] = tup;
+  const { text, media } = await getStatus(statusId);
+  await Promise.all(media.map(async urls => {
+    const { expandedUrl, mediaUrl } = urls;
 
-      // WHY: cannot append response body to form-data
-      // related? https://github.com/form-data/form-data/issues/399
-      // const imgRes = await fetch(mediaUrlHttps);
-      // if (!imgRes.ok) {
-      //   throw new Error(`failed to download image status: ${imgRes.status}`);
-      // }
+    // WHY: cannot append response body to form-data
+    // related? https://github.com/form-data/form-data/issues/399
+    // const imgRes = await fetch(mediaUrlHttps);
+    // if (!imgRes.ok) {
+    //   throw new Error(`failed to download image status: ${imgRes.status}`);
+    // }
 
-      const imgRes = await new Promise<IncomingMessage>((resolve) => {
-        https.get(mediaUrlHttps, resolve);
-      });
-      if (imgRes.statusCode !== 200) {
-        throw new Error(`failed to download image status: ${imgRes.statusCode}`);
-      }
+    const imgRes = await new Promise<IncomingMessage>((resolve) => {
+      https.get(mediaUrl, resolve);
+    });
+    if (imgRes.statusCode !== 200) {
+      throw new Error(`failed to download image status: ${imgRes.statusCode}`);
+    }
 
-      const title = '';
-      // escape hashtag
-      const desc = text.replace(/#/g, '');
-
-      // return uploadToGyazo(await imgRes.buffer(), expandedUrl, title, desc);
-      await uploadToGyazo(imgRes, expandedUrl, title, desc);
-      // return uploadToGyazo(imgRes.body, expandedUrl, title, desc);
-    }));
-    res.status(200).end();
-  } catch (err) {
+    const title = '';
+    await uploadToGyazo(imgRes, expandedUrl, title, text);
+  })).then(() => {
+    res.status(200);
+  }).catch((err) => {
     console.error(err);
-    res.status(500).end();
-  }
+    res.status(500);
+  });
+  res.end();
 };
