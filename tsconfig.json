@@ -2,9 +2,9 @@
   "compilerOptions": {
     "module": "commonjs",
     "target": "es2017",
+    "lib": ["ES2017"],
     "strict": true,
     "removeComments": true,
-    "preserveConstEnums": true,
-    "skipLibCheck": true
+    "preserveConstEnums": true
   }
 }

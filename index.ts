@@ -1,7 +1,6 @@
 // node standard library
 import https = require('https');
 import { IncomingMessage } from 'http';
-import { URL } from 'url';
 import { createHmac } from 'crypto';
 import { Readable } from 'stream';
 
@@ -12,7 +11,6 @@ import OAuth = require('oauth-1.0a');
 
 const config = require('./config.json');
 
-const TWITTER_STATUS_SHOW_URL = 'https://api.twitter.com/1.1/statuses/show.json';
 const GYAZO_UPLOAD_URL = 'https://upload.gyazo.com/api/upload';
 
 interface Status {
@@ -37,19 +35,15 @@ const token = {
 };
 
 async function getStatus(statusId: string): Promise<Status> {
-  const reqURL = new URL(`${TWITTER_STATUS_SHOW_URL}?id=${statusId}`);
-  const requestData = { url: reqURL.href, method: 'GET' };
-  const auth_data = oauth.authorize(requestData, token);
-  const header = {
-    Authorization: oauth.toHeader(auth_data).Authorization,
-  };
-  const res = await fetch(`${TWITTER_STATUS_SHOW_URL}?id=${statusId}`, {
-    headers: header,
-  });
-  if (!res.ok) throw new Error(`status ${res.status} from twittter`);
-  const data = await res.json();
+  const url = `https://api.twitter.com/1.1/statuses/show.json?id=${statusId}&tweet_mode=extended`;
+  const requestData = { url, method: 'GET' };
+  const authData = oauth.authorize(requestData, token);
 
-  const text = data['text'] as string;
+  const res = await fetch(url, { headers: oauth.toHeader(authData) as any });
+  if (!res.ok) throw new Error(`status ${res.status} from twittter`);
+
+  const data = await res.json();
+  const text = data['full_text'] as string;
   console.log(`text: ${text}`);
 
   if (data.extended_entities === undefined
